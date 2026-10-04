@@ -1,0 +1,563 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// ─── In-Memory Academic Database for Serverless Execution ───────────────
+const DEPARTMENTS = [
+  { id: 'dept-1', name: 'Computer Science & Engineering', code: 'CSE', college: 'SRM University' },
+  { id: 'dept-2', name: 'Electronics & Communication', code: 'ECE', college: 'SRM University' },
+  { id: 'dept-3', name: 'Mathematics & Computing', code: 'MATH', college: 'SRM University' },
+];
+
+const SUBJECTS = [
+  {
+    id: 'sub-1',
+    code: 'CS201',
+    name: 'Data Structures & Algorithms',
+    semester: 2,
+    departmentId: 'dept-1',
+    units: [
+      { id: 'u-1', name: 'Unit 1: Arrays & Linked Lists', order: 1 },
+      { id: 'u-2', name: 'Unit 2: Stacks & Queues', order: 2 },
+      { id: 'u-3', name: 'Unit 3: Trees & Graphs', order: 3 },
+      { id: 'u-4', name: 'Unit 4: Sorting & Searching', order: 4 },
+      { id: 'u-5', name: 'Unit 5: Hashing & Dynamic Programming', order: 5 },
+    ],
+    courseOutcomes: [
+      { id: 'co-1', code: 'CO1', description: 'Understand fundamental abstract data types' },
+      { id: 'co-2', code: 'CO2', description: 'Apply trees and graph algorithms to engineering problems' },
+      { id: 'co-3', code: 'CO3', description: 'Analyze asymptotic space and time complexity' },
+    ],
+  },
+  {
+    id: 'sub-2',
+    code: 'MA201',
+    name: 'Linear Algebra & Calculus',
+    semester: 2,
+    departmentId: 'dept-3',
+    units: [
+      { id: 'u-6', name: 'Unit 1: Matrices & Determinants', order: 1 },
+      { id: 'u-7', name: 'Unit 2: Eigenvalues & Vector Spaces', order: 2 },
+      { id: 'u-8', name: 'Unit 3: Differential Equations', order: 3 },
+    ],
+    courseOutcomes: [
+      { id: 'co-4', code: 'CO1', description: 'Understand matrix transformations and rank' },
+      { id: 'co-5', code: 'CO2', description: 'Solve higher order linear differential equations' },
+    ],
+  },
+  {
+    id: 'sub-3',
+    code: 'EC101',
+    name: 'Digital Logic Design',
+    semester: 1,
+    departmentId: 'dept-2',
+    units: [
+      { id: 'u-9', name: 'Unit 1: Boolean Algebra & Logic Gates', order: 1 },
+      { id: 'u-10', name: 'Unit 2: Combinational Logic Circuits', order: 2 },
+      { id: 'u-11', name: 'Unit 3: Sequential Circuits & Flip Flops', order: 3 },
+    ],
+    courseOutcomes: [
+      { id: 'co-6', code: 'CO1', description: 'Minimize Boolean functions using K-maps' },
+      { id: 'co-7', code: 'CO2', description: 'Design synchronous sequential logic circuits' },
+    ],
+  },
+];
+
+let USERS = [
+  {
+    id: 'usr-1',
+    email: 'admin@srmrmp.edu.in',
+    name: 'Dr. Ramesh Kumar (Admin)',
+    role: 'ADMIN',
+    department: 'CSE',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-2',
+    email: 'faculty@srmrmp.edu.in',
+    name: 'Prof. Ananya Sharma',
+    role: 'FACULTY',
+    department: 'CSE',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-3',
+    email: 'student@srmrmp.edu.in',
+    name: 'Jerome Student',
+    role: 'STUDENT',
+    department: 'CSE',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+let QUESTIONS = [
+  {
+    id: 'q-1',
+    subjectId: 'sub-1',
+    unitId: 'u-1',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 1: Arrays & Linked Lists' },
+    text: 'What is the worst-case time complexity of inserting an element at the beginning of a singly linked list with $N$ nodes?',
+    type: 'MCQ',
+    marks: 2,
+    difficulty: 'EASY',
+    bloomLevel: 'REMEMBER',
+    options: [
+      { label: 'A', text: '$O(1)$', isCorrect: true },
+      { label: 'B', text: '$O(N)$', isCorrect: false },
+      { label: 'C', text: '$O(\\log N)$', isCorrect: false },
+      { label: 'D', text: '$O(N^2)$', isCorrect: false },
+    ],
+    modelAnswer: 'Inserting at head only requires pointer update: temp->next = head; head = temp, taking O(1) constant time.',
+    usageCount: 4,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-2',
+    subjectId: 'sub-1',
+    unitId: 'u-3',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 3: Trees & Graphs' },
+    text: 'Explain the balancing mechanism of AVL Trees with all four rotation cases ($LL, RR, LR, RL$). Provide mathematical height analysis.',
+    type: 'LONG_ANSWER',
+    marks: 13,
+    difficulty: 'HARD',
+    bloomLevel: 'ANALYZE',
+    modelAnswer: 'An AVL tree maintains height balance factor $BF = |h_L - h_R| \\le 1$. LL rotation is single right rotate; RR is single left rotate; LR is left then right; RL is right then left.',
+    usageCount: 2,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-3',
+    subjectId: 'sub-1',
+    unitId: 'u-4',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 4: Sorting & Searching' },
+    text: 'Which sorting algorithm has guaranteed worst-case time complexity of $O(N \\log N)$ and is stable?',
+    type: 'MCQ',
+    marks: 2,
+    difficulty: 'MEDIUM',
+    bloomLevel: 'UNDERSTAND',
+    options: [
+      { label: 'A', text: 'Quick Sort', isCorrect: false },
+      { label: 'B', text: 'Merge Sort', isCorrect: true },
+      { label: 'C', text: 'Heap Sort', isCorrect: false },
+      { label: 'D', text: 'Selection Sort', isCorrect: false },
+    ],
+    modelAnswer: 'Merge sort divides array into two halves, recursively sorts, and merges in O(N log N) worst-case time with stability.',
+    usageCount: 3,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-4',
+    subjectId: 'sub-1',
+    unitId: 'u-2',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 2: Stacks & Queues' },
+    text: 'Evaluate the postfix expression: $6\\;2\\;3\\;+\\;*\\;3\\;8\\;4\\;/\\;-\\;&+$ step-by-step using a stack.',
+    type: 'SHORT_ANSWER',
+    marks: 5,
+    difficulty: 'MEDIUM',
+    bloomLevel: 'APPLY',
+    modelAnswer: 'Stack states: push 6, 2, 3 -> (2+3)=5 -> 6*5=30 -> push 3, 8, 4 -> (8/4)=2 -> 3-2=1 -> 30+1 = 31.',
+    usageCount: 5,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-5',
+    subjectId: 'sub-1',
+    unitId: 'u-5',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 5: Hashing & Dynamic Programming' },
+    text: 'Design a Dynamic Programming solution for the 0/1 Knapsack Problem given weights $W = [2, 3, 4, 5]$ and values $V = [3, 4, 5, 6]$ with capacity $C = 5$.',
+    type: 'LONG_ANSWER',
+    marks: 14,
+    difficulty: 'HARD',
+    bloomLevel: 'CREATE',
+    modelAnswer: 'Recurrence: $dp[i][w] = \\max(dp[i-1][w], dp[i-1][w-wt[i]] + val[i])$. Optimal value is 7 using items 1 and 2.',
+    usageCount: 1,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+let BLUEPRINTS = [
+  {
+    id: 'bp-1',
+    name: 'Semester End Examination (100 Marks)',
+    type: 'SEMESTER_EXAM',
+    subjectId: 'sub-1',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    totalMarks: 100,
+    duration: 180,
+    sections: [
+      { name: 'Part A - Short Answer', order: 1, numQuestions: 10, marksPerQuestion: 2, questionType: 'SHORT_ANSWER', compulsory: true },
+      { name: 'Part B - Detailed Analysis', order: 2, numQuestions: 5, marksPerQuestion: 13, questionType: 'LONG_ANSWER', compulsory: true },
+      { name: 'Part C - Comprehensive Case Study', order: 3, numQuestions: 1, marksPerQuestion: 15, questionType: 'CASE_STUDY', compulsory: true },
+    ],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'bp-2',
+    name: 'Continuous Assessment Test 1 (50 Marks)',
+    type: 'CAT',
+    subjectId: 'sub-1',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    totalMarks: 50,
+    duration: 90,
+    sections: [
+      { name: 'Part A - MCQs', order: 1, numQuestions: 5, marksPerQuestion: 2, questionType: 'MCQ', compulsory: true },
+      { name: 'Part B - Core Problems', order: 2, numQuestions: 2, marksPerQuestion: 13, questionType: 'SHORT_ANSWER', compulsory: true },
+      { name: 'Part C - Application Problem', order: 3, numQuestions: 1, marksPerQuestion: 14, questionType: 'LONG_ANSWER', compulsory: true },
+    ],
+    createdAt: new Date().toISOString(),
+  },
+];
+
+let PAPERS = [
+  {
+    id: 'paper-1',
+    title: 'CS201 Data Structures End Semester Examination 2026',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    blueprint: { name: 'Semester End Examination (100 Marks)' },
+    totalMarks: 100,
+    duration: 180,
+    status: 'FINALIZED',
+    setsCount: 3,
+    sections: [
+      {
+        name: 'Part A',
+        questions: QUESTIONS.filter(q => q.marks <= 5),
+      },
+      {
+        name: 'Part B',
+        questions: QUESTIONS.filter(q => q.marks > 5),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+  },
+];
+
+let ATTEMPTS = [
+  {
+    id: 'att-1',
+    title: 'Data Structures Quick Practice #1',
+    subjectCode: 'CS201',
+    subjectName: 'Data Structures & Algorithms',
+    score: 18,
+    maxScore: 20,
+    percentage: 90,
+    completedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    status: 'COMPLETED',
+  },
+  {
+    id: 'att-2',
+    title: 'Linear Algebra Matrices Drill',
+    subjectCode: 'MA201',
+    subjectName: 'Linear Algebra & Calculus',
+    score: 16,
+    maxScore: 20,
+    percentage: 80,
+    completedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    status: 'COMPLETED',
+  },
+];
+
+// ─── Main Route Dispatcher ────────────────────────────────────────────────
+export async function GET(req: NextRequest, { params }: { params: { route: string[] } }) {
+  const path = params.route.join('/');
+
+  if (path === 'subjects') {
+    return NextResponse.json({ success: true, data: SUBJECTS });
+  }
+
+  if (path === 'departments') {
+    return NextResponse.json({ success: true, data: DEPARTMENTS });
+  }
+
+  if (path === 'questions') {
+    const url = new URL(req.url);
+    const search = (url.searchParams.get('search') || '').toLowerCase();
+    const type = url.searchParams.get('type') || 'ALL';
+    const difficulty = url.searchParams.get('difficulty') || 'ALL';
+    const bloomLevel = url.searchParams.get('bloomLevel') || 'ALL';
+
+    let filtered = QUESTIONS;
+    if (search) {
+      filtered = filtered.filter(q => q.text.toLowerCase().includes(search));
+    }
+    if (type !== 'ALL') {
+      filtered = filtered.filter(q => q.type === type);
+    }
+    if (difficulty !== 'ALL') {
+      filtered = filtered.filter(q => q.difficulty === difficulty);
+    }
+    if (bloomLevel !== 'ALL') {
+      filtered = filtered.filter(q => q.bloomLevel === bloomLevel);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        questions: filtered,
+        total: filtered.length,
+        page: 1,
+        limit: 50,
+      },
+    });
+  }
+
+  if (path === 'blueprints') {
+    return NextResponse.json({ success: true, data: BLUEPRINTS });
+  }
+
+  if (path === 'papers') {
+    return NextResponse.json({ success: true, data: PAPERS });
+  }
+
+  if (path === 'users') {
+    return NextResponse.json({ success: true, data: { users: USERS, total: USERS.length } });
+  }
+
+  if (path === 'attempts/history') {
+    return NextResponse.json({ success: true, data: ATTEMPTS });
+  }
+
+  return NextResponse.json({ success: true, message: `GET /api/v1/${path}` });
+}
+
+export async function POST(req: NextRequest, { params }: { params: { route: string[] } }) {
+  const path = params.route.join('/');
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch (e) {
+    // Empty body
+  }
+
+  // ── Auth Login ──
+  if (path === 'auth/login') {
+    const { email, password } = body;
+    let user = USERS.find(u => u.email.toLowerCase() === (email || '').toLowerCase());
+    if (!user) {
+      // Allow flexible demo login
+      const role = email?.includes('admin') ? 'ADMIN' : email?.includes('student') ? 'STUDENT' : 'FACULTY';
+      user = {
+        id: `usr-${Date.now()}`,
+        email: email || 'faculty@srmrmp.edu.in',
+        name: email?.includes('admin') ? 'Dr. Ramesh Kumar (Admin)' : email?.includes('student') ? 'Jerome Student' : 'Prof. Ananya Sharma',
+        role,
+        department: 'CSE',
+        createdAt: new Date().toISOString(),
+      };
+      USERS.push(user);
+    }
+
+    const token = `qpforge-token-${Buffer.from(JSON.stringify({ id: user.id, email: user.email, role: user.role })).toString('base64')}`;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user,
+        accessToken: token,
+      },
+    });
+  }
+
+  // ── Auth Register ──
+  if (path === 'auth/register') {
+    const newUser = {
+      id: `usr-${Date.now()}`,
+      email: body.email,
+      name: body.name || 'Academic User',
+      role: body.role || 'FACULTY',
+      department: body.department || 'CSE',
+      createdAt: new Date().toISOString(),
+    };
+    USERS.push(newUser);
+    const token = `qpforge-token-${Buffer.from(JSON.stringify(newUser)).toString('base64')}`;
+    return NextResponse.json({
+      success: true,
+      message: 'Registration successful',
+      data: { user: newUser, accessToken: token },
+    });
+  }
+
+  // ── Create Question ──
+  if (path === 'questions') {
+    const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
+    const unit = sub.units.find(u => u.id === body.unitId) || sub.units[0];
+    const newQuestion = {
+      id: `q-${Date.now()}`,
+      subjectId: sub.id,
+      unitId: unit?.id,
+      subject: { code: sub.code, name: sub.name },
+      unit: { name: unit?.name || 'General' },
+      text: body.text,
+      type: body.type || 'SHORT_ANSWER',
+      marks: Number(body.marks) || 5,
+      difficulty: body.difficulty || 'MEDIUM',
+      bloomLevel: body.bloomLevel || 'UNDERSTAND',
+      options: body.options || [],
+      modelAnswer: body.modelAnswer || 'Standard model answer & marking key.',
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    QUESTIONS.unshift(newQuestion);
+    return NextResponse.json({ success: true, data: newQuestion });
+  }
+
+  // ── Create Blueprint ──
+  if (path === 'blueprints') {
+    const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
+    const newBp = {
+      id: `bp-${Date.now()}`,
+      name: body.name,
+      type: body.type || 'CUSTOM',
+      subjectId: sub.id,
+      subject: { code: sub.code, name: sub.name },
+      totalMarks: Number(body.totalMarks) || 100,
+      duration: Number(body.duration) || 180,
+      sections: body.sections || [],
+      createdAt: new Date().toISOString(),
+    };
+    BLUEPRINTS.unshift(newBp);
+    return NextResponse.json({ success: true, data: newBp });
+  }
+
+  // ── Notes AI Question Generator ──
+  if (path === 'notes/generate') {
+    const text = body.text || 'Core engineering syllabus concepts';
+    const num = Math.min(Number(body.numQuestions) || 5, 8);
+    const type = body.questionType || 'MCQ';
+    const difficulty = body.difficulty || 'Medium';
+    const bloomLevel = body.bloomLevel || 'Apply';
+
+    const generated = [];
+    for (let i = 1; i <= num; i++) {
+      if (type === 'MCQ') {
+        generated.push({
+          question: `Regarding ${text.slice(0, 30)}... Question #${i}: What is the primary characteristic?`,
+          type: 'MCQ',
+          difficulty,
+          bloomLevel,
+          marks: 2,
+          options: [
+            { label: 'A', text: `Option A: Guaranteed $O(\\log N)$ convergence`, isCorrect: true },
+            { label: 'B', text: `Option B: Linear space degradation $O(N)$`, isCorrect: false },
+            { label: 'C', text: `Option C: Unbounded recursion stack`, isCorrect: false },
+            { label: 'D', text: `Option D: None of the above`, isCorrect: false },
+          ],
+          modelAnswer: 'Option A is mathematically optimal under standard conditions.',
+        });
+      } else {
+        generated.push({
+          question: `Explain the fundamental principles of ${text.slice(0, 40)}... (Part ${i}). Derive key formulas and state assumptions.`,
+          type,
+          difficulty,
+          bloomLevel,
+          marks: type === 'Long Answer' ? 13 : 5,
+          modelAnswer: 'Comprehensive explanation with step-by-step breakdown and relevant academic diagrams.',
+        });
+      }
+    }
+    return NextResponse.json({ success: true, data: { questions: generated } });
+  }
+
+  // ── Generate Paper ──
+  if (path === 'papers/generate' || path === 'papers') {
+    const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
+    const bp = BLUEPRINTS.find(b => b.id === body.blueprintId) || BLUEPRINTS[0];
+    const newPaper = {
+      id: `paper-${Date.now()}`,
+      title: body.title || `${sub.name} Assessment 2026`,
+      subject: { code: sub.code, name: sub.name },
+      blueprint: { name: bp.name },
+      totalMarks: bp.totalMarks || 100,
+      duration: bp.duration || 180,
+      status: 'FINALIZED',
+      setsCount: 3,
+      sections: [
+        { name: 'Part A - Core Knowledge', questions: QUESTIONS.slice(0, 3) },
+        { name: 'Part B - Problem Solving', questions: QUESTIONS.slice(2, 5) },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+    PAPERS.unshift(newPaper);
+    return NextResponse.json({ success: true, data: newPaper });
+  }
+
+  // ── Clone Paper ──
+  if (path.includes('/clone')) {
+    const paperId = path.split('/')[1];
+    const source = PAPERS.find(p => p.id === paperId) || PAPERS[0];
+    const clone = {
+      ...source,
+      id: `paper-${Date.now()}`,
+      title: `${source.title} (Copy)`,
+      createdAt: new Date().toISOString(),
+    };
+    PAPERS.unshift(clone);
+    return NextResponse.json({ success: true, data: clone });
+  }
+
+  // ── Export Paper ──
+  if (path.includes('/export')) {
+    return NextResponse.json({
+      success: true,
+      message: 'Paper exported successfully',
+      data: {
+        docxUrl: '#',
+        pdfUrl: '#',
+        answerKeyUrl: '#',
+      },
+    });
+  }
+
+  // ── Student Practice Submit ──
+  if (path === 'attempts') {
+    const newAttempt = {
+      id: `att-${Date.now()}`,
+      title: body.title || 'Data Structures Practice Test',
+      subjectCode: 'CS201',
+      subjectName: 'Data Structures & Algorithms',
+      score: body.score || 18,
+      maxScore: body.maxScore || 20,
+      percentage: Math.round(((body.score || 18) / (body.maxScore || 20)) * 100),
+      completedAt: new Date().toISOString(),
+      status: 'COMPLETED',
+    };
+    ATTEMPTS.unshift(newAttempt);
+    return NextResponse.json({ success: true, data: newAttempt });
+  }
+
+  return NextResponse.json({ success: true, message: `POST /api/v1/${path}` });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { route: string[] } }) {
+  const path = params.route.join('/');
+
+  if (path.startsWith('questions/')) {
+    const id = path.split('/')[1];
+    QUESTIONS = QUESTIONS.filter(q => q.id !== id);
+    return NextResponse.json({ success: true, message: 'Question deleted' });
+  }
+
+  if (path.startsWith('blueprints/')) {
+    const id = path.split('/')[1];
+    BLUEPRINTS = BLUEPRINTS.filter(b => b.id !== id);
+    return NextResponse.json({ success: true, message: 'Blueprint deleted' });
+  }
+
+  if (path.startsWith('papers/')) {
+    const id = path.split('/')[1];
+    PAPERS = PAPERS.filter(p => p.id !== id);
+    return NextResponse.json({ success: true, message: 'Paper deleted' });
+  }
+
+  if (path.startsWith('users/')) {
+    const id = path.split('/')[1];
+    USERS = USERS.filter(u => u.id !== id);
+    return NextResponse.json({ success: true, message: 'User deleted' });
+  }
+
+  return NextResponse.json({ success: true, message: `DELETE /api/v1/${path}` });
+}
