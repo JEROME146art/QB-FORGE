@@ -9,7 +9,7 @@ export const createBlueprint = async (req: Request, res: Response): Promise<void
       name,
       type,
       subjectId,
-      facultyId: req.user!.id,
+      facultyId: req.user?.id ?? '',
       sections: {
         create: sections.map((s: any) => ({
           name: s.name,

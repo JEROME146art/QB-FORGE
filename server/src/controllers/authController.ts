@@ -25,13 +25,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const token = jwt.sign(
     { id: user.id, role: user.role, email: user.email },
     config.jwtAccessSecret,
-    { expiresIn: config.jwtAccessExpiresIn as any },
+    { expiresIn: config.jwtAccessExpiresIn },
   );
 
   const refreshToken = jwt.sign(
     { id: user.id },
     config.jwtRefreshSecret,
-    { expiresIn: config.jwtRefreshExpiresIn as any },
+    { expiresIn: config.jwtRefreshExpiresIn },
   );
 
   res.status(201).json({
@@ -59,13 +59,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const token = jwt.sign(
     { id: user.id, role: user.role, email: user.email },
     config.jwtAccessSecret,
-    { expiresIn: config.jwtAccessExpiresIn as any },
+    { expiresIn: config.jwtAccessExpiresIn },
   );
 
   const refreshToken = jwt.sign(
     { id: user.id },
     config.jwtRefreshSecret,
-    { expiresIn: config.jwtRefreshExpiresIn as any },
+    { expiresIn: config.jwtRefreshExpiresIn },
   );
 
   res.json({
@@ -96,7 +96,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     const token = jwt.sign(
       { id: user.id, role: user.role, email: user.email },
       config.jwtAccessSecret,
-      { expiresIn: config.jwtAccessExpiresIn as any },
+      { expiresIn: config.jwtAccessExpiresIn },
     );
 
     res.json({ success: true, data: { accessToken: token } });

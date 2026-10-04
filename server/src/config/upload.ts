@@ -37,7 +37,7 @@ export const upload = multer({
     if (ALLOWED_EXT.includes(ext) && ALLOWED_MIME[mime]) {
       cb(null, true);
     } else {
-      cb(new Error(`Invalid file type. Allowed: ${ALLOWED_EXT.join(', ')}`) as any, false);
+      cb(new Error(`Invalid file type. Allowed: ${ALLOWED_EXT.join(', ')}`), false);
     }
   },
 });

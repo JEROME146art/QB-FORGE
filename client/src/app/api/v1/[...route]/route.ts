@@ -515,6 +515,35 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     return NextResponse.json({ success: true, data: newQuestion });
   }
 
+  // ── Bulk Create / Import Questions ──
+  if (path === 'questions/bulk' || path === 'questions/import') {
+    const list = Array.isArray(body.questions) ? body.questions : Array.isArray(body) ? body : [];
+    const inserted = [];
+    for (const item of list) {
+      const sub = SUBJECTS.find(s => s.id === item.subjectId || s.code === item.subjectCode) || SUBJECTS[0];
+      const unit = sub.units.find(u => u.id === item.unitId || u.name === item.unitName) || sub.units[0];
+      const qObj = {
+        id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        subjectId: sub.id,
+        unitId: unit?.id,
+        subject: { code: sub.code, name: sub.name },
+        unit: { name: unit?.name || 'General' },
+        text: item.text || item.question,
+        type: item.type || 'SHORT_ANSWER',
+        marks: Number(item.marks) || 5,
+        difficulty: item.difficulty || 'MEDIUM',
+        bloomLevel: item.bloomLevel || 'UNDERSTAND',
+        options: item.options || [],
+        modelAnswer: item.modelAnswer || 'Standard model answer & marking key.',
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+      };
+      QUESTIONS.unshift(qObj);
+      inserted.push(qObj);
+    }
+    return NextResponse.json({ success: true, count: inserted.length, data: inserted });
+  }
+
   // ── Create Blueprint ──
   if (path === 'blueprints') {
     const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
