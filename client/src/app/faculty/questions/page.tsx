@@ -77,12 +77,17 @@ function QuestionsTableContent() {
       if (type && type !== 'ALL') params.append('type', type);
       if (difficulty && difficulty !== 'ALL') params.append('difficulty', difficulty);
       if (bloomLevel && bloomLevel !== 'ALL') params.append('bloomLevel', bloomLevel);
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
-
-      const data = await api<{ data: Question[]; pagination: any }>(`/questions?${params.toString()}`);
-      setQuestions(data.data || []);
-      setTotal(data.pagination?.total || 0);
+      const data = await api<any>(`/questions?${params.toString()}`);
+      if (Array.isArray(data.data)) {
+        setQuestions(data.data);
+        setTotal(data.pagination?.total || data.data.length);
+      } else if (data.data && Array.isArray(data.data.questions)) {
+        setQuestions(data.data.questions);
+        setTotal(data.data.total || data.data.questions.length);
+      } else {
+        setQuestions([]);
+        setTotal(0);
+      }
     } catch (error) {
       console.error('Failed to fetch questions:', error);
     } finally {

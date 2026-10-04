@@ -39,9 +39,17 @@ export default function AdminUsersPage() {
         params.append('page', page.toString());
         params.append('limit', limit.toString());
 
-        const data = await api(`/users?${params.toString()}`);
-        setUsers(data.data);
-        setTotal(data.pagination?.total || 0);
+        const data = await api<any>(`/users?${params.toString()}`);
+        if (Array.isArray(data.data)) {
+          setUsers(data.data);
+          setTotal(data.pagination?.total || data.data.length);
+        } else if (data.data && Array.isArray(data.data.users)) {
+          setUsers(data.data.users);
+          setTotal(data.data.total || data.data.users.length);
+        } else {
+          setUsers([]);
+          setTotal(0);
+        }
       } catch (error) {
         console.error('Failed to fetch users:', error);
       } finally {

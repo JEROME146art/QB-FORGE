@@ -14,6 +14,7 @@ const SUBJECTS = [
     name: 'Data Structures & Algorithms',
     semester: 2,
     departmentId: 'dept-1',
+    department: { name: 'Computer Science & Engineering' },
     units: [
       { id: 'u-1', name: 'Unit 1: Arrays & Linked Lists', order: 1 },
       { id: 'u-2', name: 'Unit 2: Stacks & Queues', order: 2 },
@@ -33,6 +34,7 @@ const SUBJECTS = [
     name: 'Linear Algebra & Calculus',
     semester: 2,
     departmentId: 'dept-3',
+    department: { name: 'Mathematics & Computing' },
     units: [
       { id: 'u-6', name: 'Unit 1: Matrices & Determinants', order: 1 },
       { id: 'u-7', name: 'Unit 2: Eigenvalues & Vector Spaces', order: 2 },
@@ -49,6 +51,7 @@ const SUBJECTS = [
     name: 'Digital Logic Design',
     semester: 1,
     departmentId: 'dept-2',
+    department: { name: 'Electronics & Communication' },
     units: [
       { id: 'u-9', name: 'Unit 1: Boolean Algebra & Logic Gates', order: 1 },
       { id: 'u-10', name: 'Unit 2: Combinational Logic Circuits', order: 2 },
@@ -176,6 +179,36 @@ let QUESTIONS = [
     usageCount: 1,
     createdAt: new Date().toISOString(),
   },
+  {
+    id: 'q-6',
+    subjectId: 'sub-2',
+    unitId: 'u-6',
+    subject: { code: 'MA201', name: 'Linear Algebra & Calculus' },
+    unit: { name: 'Unit 1: Matrices & Determinants' },
+    text: 'Find the eigenvalues and eigenvectors of the matrix $A = \\begin{pmatrix} 4 & 1 \\\\ 2 & 3 \\end{pmatrix}$.',
+    type: 'SHORT_ANSWER',
+    marks: 5,
+    difficulty: 'MEDIUM',
+    bloomLevel: 'APPLY',
+    modelAnswer: 'Characteristic equation: $\\det(A - \\lambda I) = (4-\\lambda)(3-\\lambda) - 2 = \\lambda^2 - 7\\lambda + 10 = 0$. Eigenvalues are $\\lambda_1 = 5, \\lambda_2 = 2$.',
+    usageCount: 2,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-7',
+    subjectId: 'sub-3',
+    unitId: 'u-9',
+    subject: { code: 'EC101', name: 'Digital Logic Design' },
+    unit: { name: 'Unit 1: Boolean Algebra & Logic Gates' },
+    text: 'State and prove De Morgan\'s Theorems algebraically and verify with truth tables.',
+    type: 'SHORT_ANSWER',
+    marks: 5,
+    difficulty: 'EASY',
+    bloomLevel: 'REMEMBER',
+    modelAnswer: '1) $\\overline{A + B} = \\overline{A} \\cdot \\overline{B}$; 2) $\\overline{A \\cdot B} = \\overline{A} + \\overline{B}$.',
+    usageCount: 3,
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 let BLUEPRINTS = [
@@ -264,6 +297,18 @@ let ATTEMPTS = [
 export async function GET(req: NextRequest, { params }: { params: { route: string[] } }) {
   const path = params.route.join('/');
 
+  if (path === 'analytics/dashboard') {
+    return NextResponse.json({
+      success: true,
+      data: {
+        totalQuestions: QUESTIONS.length,
+        totalPapers: PAPERS.length,
+        totalUsers: USERS.length,
+        totalAttempts: ATTEMPTS.length,
+      },
+    });
+  }
+
   if (path === 'subjects') {
     return NextResponse.json({ success: true, data: SUBJECTS });
   }
@@ -295,8 +340,8 @@ export async function GET(req: NextRequest, { params }: { params: { route: strin
 
     return NextResponse.json({
       success: true,
-      data: {
-        questions: filtered,
+      data: filtered,
+      pagination: {
         total: filtered.length,
         page: 1,
         limit: 50,
@@ -313,14 +358,18 @@ export async function GET(req: NextRequest, { params }: { params: { route: strin
   }
 
   if (path === 'users') {
-    return NextResponse.json({ success: true, data: { users: USERS, total: USERS.length } });
+    return NextResponse.json({
+      success: true,
+      data: USERS,
+      pagination: { total: USERS.length, page: 1, limit: 50 },
+    });
   }
 
   if (path === 'attempts/history') {
     return NextResponse.json({ success: true, data: ATTEMPTS });
   }
 
-  return NextResponse.json({ success: true, message: `GET /api/v1/${path}` });
+  return NextResponse.json({ success: true, message: `GET /api/v1/${path}`, data: [] });
 }
 
 export async function POST(req: NextRequest, { params }: { params: { route: string[] } }) {
@@ -337,7 +386,6 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     const { email, password } = body;
     let user = USERS.find(u => u.email.toLowerCase() === (email || '').toLowerCase());
     if (!user) {
-      // Allow flexible demo login
       const role = email?.includes('admin') ? 'ADMIN' : email?.includes('student') ? 'STUDENT' : 'FACULTY';
       user = {
         id: `usr-${Date.now()}`,
