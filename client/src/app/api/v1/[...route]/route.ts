@@ -181,6 +181,51 @@ let QUESTIONS = [
   },
   {
     id: 'q-6',
+    subjectId: 'sub-1',
+    unitId: 'u-3',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 3: Trees & Graphs' },
+    text: 'Apply Dijkstra\'s algorithm to find the single-source shortest path from source node $A$ in a directed weighted graph.',
+    type: 'LONG_ANSWER',
+    marks: 13,
+    difficulty: 'MEDIUM',
+    bloomLevel: 'APPLY',
+    modelAnswer: 'Maintains priority queue of unvisited nodes with tentative distance $d(u) + w(u,v) < d(v)$. Complexity $O((V+E)\\log V)$.',
+    usageCount: 4,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-7',
+    subjectId: 'sub-1',
+    unitId: 'u-1',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 1: Arrays & Linked Lists' },
+    text: 'Differentiate between singly linked list and doubly linked list with respect to memory overhead and deletion complexity.',
+    type: 'SHORT_ANSWER',
+    marks: 2,
+    difficulty: 'EASY',
+    bloomLevel: 'REMEMBER',
+    modelAnswer: 'DLL requires two pointers per node (prev, next) with O(1) deletion given pointer to node; SLL requires single pointer with O(N) predecessor traversal.',
+    usageCount: 2,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-8',
+    subjectId: 'sub-1',
+    unitId: 'u-4',
+    subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
+    unit: { name: 'Unit 4: Sorting & Searching' },
+    text: 'Case Study: An autonomous drone navigates a 3D grid with dynamic obstacles. Design an optimal spatial data structure (e.g. Octree / KD-Tree) for real-time collision detection.',
+    type: 'CASE_STUDY',
+    marks: 15,
+    difficulty: 'HARD',
+    bloomLevel: 'EVALUATE',
+    modelAnswer: 'Use a 3D KD-tree with bounding volume hierarchies (BVH) for O(log N) point location and nearest neighbor queries.',
+    usageCount: 1,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'q-9',
     subjectId: 'sub-2',
     unitId: 'u-6',
     subject: { code: 'MA201', name: 'Linear Algebra & Calculus' },
@@ -195,7 +240,7 @@ let QUESTIONS = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'q-7',
+    id: 'q-10',
     subjectId: 'sub-3',
     unitId: 'u-9',
     subject: { code: 'EC101', name: 'Digital Logic Design' },
@@ -221,8 +266,8 @@ let BLUEPRINTS = [
     totalMarks: 100,
     duration: 180,
     sections: [
-      { name: 'Part A - Short Answer', order: 1, numQuestions: 10, marksPerQuestion: 2, questionType: 'SHORT_ANSWER', compulsory: true },
-      { name: 'Part B - Detailed Analysis', order: 2, numQuestions: 5, marksPerQuestion: 13, questionType: 'LONG_ANSWER', compulsory: true },
+      { name: 'Part A - Objective / Short Answers', order: 1, numQuestions: 5, marksPerQuestion: 2, questionType: 'MCQ', compulsory: true },
+      { name: 'Part B - Analytical Core Problems', order: 2, numQuestions: 4, marksPerQuestion: 13, questionType: 'LONG_ANSWER', compulsory: true },
       { name: 'Part C - Comprehensive Case Study', order: 3, numQuestions: 1, marksPerQuestion: 15, questionType: 'CASE_STUDY', compulsory: true },
     ],
     createdAt: new Date().toISOString(),
@@ -236,9 +281,23 @@ let BLUEPRINTS = [
     totalMarks: 50,
     duration: 90,
     sections: [
-      { name: 'Part A - MCQs', order: 1, numQuestions: 5, marksPerQuestion: 2, questionType: 'MCQ', compulsory: true },
-      { name: 'Part B - Core Problems', order: 2, numQuestions: 2, marksPerQuestion: 13, questionType: 'SHORT_ANSWER', compulsory: true },
-      { name: 'Part C - Application Problem', order: 3, numQuestions: 1, marksPerQuestion: 14, questionType: 'LONG_ANSWER', compulsory: true },
+      { name: 'Part A - Objective MCQs', order: 1, numQuestions: 5, marksPerQuestion: 2, questionType: 'MCQ', compulsory: true },
+      { name: 'Part B - Core Conceptual Problems', order: 2, numQuestions: 2, marksPerQuestion: 13, questionType: 'SHORT_ANSWER', compulsory: true },
+      { name: 'Part C - Practical Application', order: 3, numQuestions: 1, marksPerQuestion: 14, questionType: 'LONG_ANSWER', compulsory: true },
+    ],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'bp-3',
+    name: 'Linear Algebra Mid-Term Examination (50 Marks)',
+    type: 'CAT',
+    subjectId: 'sub-2',
+    subject: { code: 'MA201', name: 'Linear Algebra & Calculus' },
+    totalMarks: 50,
+    duration: 90,
+    sections: [
+      { name: 'Part A - Definitions & Properties', order: 1, numQuestions: 5, marksPerQuestion: 2, questionType: 'SHORT_ANSWER', compulsory: true },
+      { name: 'Part B - Matrix Calculations', order: 2, numQuestions: 4, marksPerQuestion: 10, questionType: 'LONG_ANSWER', compulsory: true },
     ],
     createdAt: new Date().toISOString(),
   },
@@ -257,11 +316,13 @@ let PAPERS = [
     setsCount: 3,
     sections: [
       {
-        name: 'Part A',
+        name: 'Part A - Objective / Short Answers',
+        totalMarks: 10,
         questions: QUESTIONS.filter(q => q.marks <= 5),
       },
       {
-        name: 'Part B',
+        name: 'Part B - Analytical Core Problems',
+        totalMarks: 52,
         questions: QUESTIONS.filter(q => q.marks > 5),
       },
     ],
@@ -515,24 +576,56 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
   if (path === 'papers/generate' || path === 'papers') {
     const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
     const bp = BLUEPRINTS.find(b => b.id === body.blueprintId) || BLUEPRINTS[0];
+
+    // Intelligently assemble questions matching the blueprint sections
+    const generatedSections = (bp.sections || [
+      { name: 'Part A - Objective Questions', numQuestions: 5, marksPerQuestion: 2 },
+      { name: 'Part B - Core Problems', numQuestions: 3, marksPerQuestion: 13 },
+    ]).map((sec: any, idx: number) => {
+      let matching = QUESTIONS.filter(q => q.subjectId === sub.id || true);
+      if (sec.questionType) {
+        const typeMatch = matching.filter(q => q.type === sec.questionType);
+        if (typeMatch.length > 0) matching = typeMatch;
+      }
+      
+      const count = Math.min(sec.numQuestions || 3, matching.length);
+      const selected = matching.slice(0, count).map(q => ({
+        ...q,
+        marks: sec.marksPerQuestion || q.marks,
+      }));
+
+      return {
+        name: sec.name || `Section ${idx + 1}`,
+        totalMarks: selected.reduce((sum, q) => sum + (q.marks || 2), 0) || (sec.numQuestions * sec.marksPerQuestion),
+        questions: selected.length > 0 ? selected : QUESTIONS.slice(0, 3),
+      };
+    });
+
+    const calculatedTotal = generatedSections.reduce((sum, s) => sum + s.totalMarks, 0);
+
     const newPaper = {
       id: `paper-${Date.now()}`,
-      title: body.title || `${sub.name} Assessment 2026`,
+      title: body.title || `${sub.code} - ${bp.name}`,
       type: body.type || bp?.type || 'SEMESTER_EXAM',
       subject: { code: sub.code, name: sub.name },
-      blueprint: { name: bp?.name || 'General Blueprint' },
-      totalMarks: bp.totalMarks || 100,
+      blueprint: { name: bp?.name || 'Standard Blueprint' },
+      totalMarks: bp.totalMarks || calculatedTotal || 100,
       duration: bp.duration || 180,
       status: 'FINALIZED',
-      setsCount: 3,
-      sections: [
-        { name: 'Part A - Core Knowledge', questions: QUESTIONS.slice(0, 3) },
-        { name: 'Part B - Problem Solving', questions: QUESTIONS.slice(2, 5) },
-      ],
+      setsCount: body.sets?.length || 2,
+      sections: generatedSections,
       createdAt: new Date().toISOString(),
     };
+
     PAPERS.unshift(newPaper);
-    return NextResponse.json({ success: true, data: newPaper });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        success: true,
+        ...newPaper,
+      },
+    });
   }
 
   // ── Clone Paper ──
