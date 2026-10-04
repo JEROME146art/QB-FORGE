@@ -1,0 +1,378 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum QuestionType {
+  MCQ
+  SHORT_ANSWER
+  LONG_ANSWER
+  FILL_IN_BLANKS
+  TRUE_FALSE
+  NUMERICAL
+  CASE_STUDY
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum BloomLevel {
+  REMEMBER
+  UNDERSTAND
+  APPLY
+  ANALYZE
+  EVALUATE
+  CREATE
+}
+
+enum PaperType {
+  SEMESTER_EXAM
+  CAT
+  CUSTOM
+}
+
+enum PaperStatus {
+  DRAFT
+  FINALIZED
+  EXPORTED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_GRADED
+  GRADED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  passwordHash  String
+  name          String
+  role          Role            @default(STUDENT)
+  departmentId  String?
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  college       String          @default("")
+  phone         String?         @default("")
+  avatarUrl     String?         @default("")
+  refreshToken  String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  questions     Question[]      @relation("QuestionAuthor")
+  papers        Paper[]         @relation("PaperFaculty")
+  attempts      Attempt[]
+  auditLogs     AuditLog[]      @relation("AuditTargetUser")
+  sentLogs      AuditLog[]      @relation("AuditActor")
+  notes         Note[]
+  blueprints    Blueprint[]
+
+  @@index([email])
+  @@index([role])
+  @@index([departmentId])
+}
+
+model Department {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  code        String          @unique
+  college     String          @default("")
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  subjects    Subject[]
+  users       User[]
+  programs    Program[]
+
+  @@index([code])
+}
+
+model Program {
+  id             String          @id @default(cuid())
+  name           String          // e.g. B.Tech CSE
+  code           String          @unique
+  departmentId   String?
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  subjects       Subject[]
+
+  @@index([departmentId])
+}
+
+model Subject {
+  id            String          @id @default(cuid())
+  code          String          @unique // e.g. CS201
+  name          String
+  departmentId  String?
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  programId     String?
+  program       Program?        @relation(fields: [programId], references: [id])
+  semester      Int             @default(1)
+  description   String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  units         Unit[]
+  courseOutcomes CourseOutcome[]
+  questions     Question[]
+  notes         Note[]
+  blueprints    Blueprint[]
+  papers        Paper[]
+
+  @@index([departmentId])
+  @@index([programId])
+}
+
+model Unit {
+  id          String          @id @default(cuid())
+  name        String
+  subjectId   String
+  subject     Subject         @relation(fields: [subjectId], references: [id])
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  questions   Question[]
+  notes       Note[]
+
+  @@index([subjectId])
+}
+
+model CourseOutcome {
+  id          String          @id @default(cuid())
+  code        String          // CO1 … CO5
+  description String?         @db.Text
+  subjectId   String
+  subject     Subject         @relation(fields: [subjectId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  questions   Question[]
+
+  @@index([subjectId])
+}
+
+model Question {
+  id              String          @id @default(cuid())
+  subjectId       String
+  subject         Subject         @relation(fields: [subjectId], references: [id])
+  unitId          String?
+  unit            Unit?           @relation(fields: [unitId], references: [id])
+  courseOutcomeId String?
+  courseOutcome   CourseOutcome?  @relation(fields: [courseOutcomeId], references: [id])
+  type            QuestionType
+  text            String          @db.Text
+  options         Json?           // MCQ options [{label, text, isCorrect}]
+  optionsList     Option[]
+  modelAnswer     String?         @db.Text
+  markingScheme   Json?           // { marks: ..., negative: ... }
+  marks           Float
+  difficulty      Difficulty
+  bloomLevel      BloomLevel
+  tags            String[]        // searchable tags
+  imageUrl        String?
+  usageCount      Int             @default(0)
+  lastUsedInPaperId String?
+  createdBy       String
+  createdByUser   User            @relation("QuestionAuthor", fields: [createdBy], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?       // soft delete
+  paperQuestions  PaperQuestion[]
+  attemptAnswers  AttemptAnswer[]
+
+  @@index([subjectId])
+  @@index([unitId])
+  @@index([courseOutcomeId])
+  @@index([difficulty])
+  @@index([bloomLevel])
+  @@index([type])
+  @@index([tags])
+  @@index([deletedAt])
+}
+
+model Option {
+  id          String   @id @default(cuid())
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label       String   // A, B, C, D
+  text        String   @db.Text
+  isCorrect   Boolean  @default(false)
+
+  @@index([questionId])
+}
+
+model Note {
+  id            String   @id @default(cuid())
+  title         String
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  unitId        String?
+  unit          Unit?    @relation(fields: [unitId], references: [id])
+  filePath      String
+  fileType      String   // pdf, docx, pptx, txt
+  extractedText String?  @db.Text
+  uploadedBy    String
+  uploadedByUser User    @relation(fields: [uploadedBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([subjectId])
+}
+
+model Blueprint {
+  id          String             @id @default(cuid())
+  name        String
+  type        PaperType
+  subjectId   String
+  subject     Subject            @relation(fields: [subjectId], references: [id])
+  facultyId   String
+  faculty     User               @relation(fields: [facultyId], references: [id])
+  sections    BlueprintSection[]
+  constraints Json?              // { unitCoverage, bloomDistribution, difficultyDistribution }
+  totalMarks  Float              @default(100)
+  duration    Int                @default(180) // minutes
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  papers      Paper[]
+
+  @@index([subjectId])
+  @@index([facultyId])
+}
+
+model BlueprintSection {
+  id               String       @id @default(cuid())
+  blueprintId      String
+  blueprint        Blueprint    @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  name             String       // e.g. "Part A"
+  order            Int
+  numQuestions     Int
+  marksPerQuestion Float
+  questionType     QuestionType?
+  difficulty       Difficulty?
+  bloomLevel       BloomLevel?
+  unitId           String?
+  choiceCount      Int?         // internal options (e.g. answer any 2 of 3)
+  compulsory       Boolean      @default(true)
+}
+
+model Paper {
+  id           String          @id @default(cuid())
+  title        String
+  type         PaperType
+  subjectId    String
+  subject      Subject         @relation(fields: [subjectId], references: [id])
+  blueprintId  String?
+  blueprint    Blueprint?      @relation(fields: [blueprintId], references: [id])
+  facultyId    String
+  faculty      User            @relation("PaperFaculty", fields: [facultyId], references: [id])
+  status       PaperStatus     @default(DRAFT)
+  totalMarks   Float
+  duration     Int             // minutes
+  instructions String?         @db.Text
+  collegeHeader Json?          // { logo, collegeName, dept, etc. }
+  sets         PaperSet[]
+  questions    PaperQuestion[]
+  version      Int             @default(1)
+  parentId     String?         // for version history
+  parent       Paper?          @relation("VersionHistory", fields: [parentId], references: [id])
+  children     Paper[]         @relation("VersionHistory")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([subjectId])
+  @@index([facultyId])
+}
+
+model PaperSet {
+  id           String          @id @default(cuid())
+  paperId      String
+  paper        Paper           @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  setLabel     String          // "Set A", "Set B", "Set C"
+  questions    PaperQuestion[]
+  attempts     Attempt[]
+  pdfUrl       String?
+  docxUrl      String?
+  answerKeyUrl String?
+}
+
+model PaperQuestion {
+  id          String    @id @default(cuid())
+  paperId     String
+  paper       Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  paperSetId  String?
+  paperSet    PaperSet? @relation(fields: [paperSetId], references: [id])
+  questionId  String
+  question    Question  @relation(fields: [questionId], references: [id])
+  setLabel    String?   // null = all sets
+  order       Int
+  marks       Float
+  version     Int       @default(1) // for tracking if question was swapped
+
+  @@index([paperId])
+  @@index([questionId])
+  @@index([paperSetId])
+}
+
+model Attempt {
+  id          String          @id @default(cuid())
+  paperSetId  String
+  paperSet    PaperSet        @relation(fields: [paperSetId], references: [id])
+  studentId   String
+  student     User            @relation(fields: [studentId], references: [id])
+  status      AttemptStatus   @default(IN_PROGRESS)
+  score       Float?
+  maxScore    Float
+  answers     AttemptAnswer[]
+  startedAt   DateTime        @default(now())
+  submittedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@index([studentId])
+  @@index([paperSetId])
+}
+
+model AttemptAnswer {
+  id          String   @id @default(cuid())
+  attemptId   String
+  attempt     Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id])
+  answer      String?  @db.Text
+  isCorrect   Boolean?
+  marksEarned Float?   @default(0)
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE, UPDATE, DELETE, GENERATE_PAPER, EXPORT, LOGIN
+  entity    String   // Question, Paper, etc.
+  entityId  String
+  actorId   String
+  actor     User     @relation("AuditActor", fields: [actorId], references: [id])
+  userId    String?  // affected user (for role changes)
+  user      User?    @relation("AuditTargetUser", fields: [userId], references: [id])
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity, entityId])
+}
