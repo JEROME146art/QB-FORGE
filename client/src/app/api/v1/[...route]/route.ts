@@ -248,6 +248,7 @@ let PAPERS = [
   {
     id: 'paper-1',
     title: 'CS201 Data Structures End Semester Examination 2026',
+    type: 'SEMESTER_EXAM',
     subject: { code: 'CS201', name: 'Data Structures & Algorithms' },
     blueprint: { name: 'Semester End Examination (100 Marks)' },
     totalMarks: 100,
@@ -517,8 +518,9 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     const newPaper = {
       id: `paper-${Date.now()}`,
       title: body.title || `${sub.name} Assessment 2026`,
+      type: body.type || bp?.type || 'SEMESTER_EXAM',
       subject: { code: sub.code, name: sub.name },
-      blueprint: { name: bp.name },
+      blueprint: { name: bp?.name || 'General Blueprint' },
       totalMarks: bp.totalMarks || 100,
       duration: bp.duration || 180,
       status: 'FINALIZED',

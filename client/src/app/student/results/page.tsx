@@ -81,7 +81,7 @@ export default function ResultsPage() {
               <Card key={attempt.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold">{attempt.paperSet.paper.title}</h3>
+                    <h3 className="font-semibold">{attempt.paperSet?.paper?.title || (attempt as any).title || 'Practice Test'}</h3>
                     <Badge variant={percentage >= 50 ? 'success' : 'destructive'}>
                       {grade.grade}
                     </Badge>
@@ -97,7 +97,7 @@ export default function ResultsPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Date</span>
-                      <span className="text-muted-foreground">{new Date(attempt.createdAt).toLocaleDateString()}</span>
+                      <span className="text-muted-foreground">{new Date(attempt.createdAt || (attempt as any).completedAt || Date.now()).toLocaleDateString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Status</span>

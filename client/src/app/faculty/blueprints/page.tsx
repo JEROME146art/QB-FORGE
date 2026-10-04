@@ -250,7 +250,7 @@ export default function BlueprintsPage() {
                         <p className="text-xs text-muted-foreground">{bp.subject?.code} - {bp.subject?.name}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{bp.type.replace('_', ' ')}</Badge>
+                        <Badge variant="outline">{(bp.type || 'CUSTOM').replace(/_/g, ' ')}</Badge>
                       </TableCell>
                       <TableCell className="text-xs">
                         {bp.sections?.length || 0} Sections ({bp.sections?.map(s => s.name).join(', ')})

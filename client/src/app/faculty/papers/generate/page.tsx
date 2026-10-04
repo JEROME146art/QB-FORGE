@@ -66,7 +66,7 @@ export default function GeneratePaperPage() {
   useEffect(() => {
     if (subjectId) {
       const filtered = blueprints.filter((b) => b.subjectId === subjectId);
-      setBlueprint(filtered.length > 0 ? filtered[0] : null);
+      setBlueprint(filtered.length > 0 ? filtered[0] : (blueprints.length > 0 ? blueprints[0] : null));
     }
   }, [subjectId, blueprints]);
 

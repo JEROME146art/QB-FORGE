@@ -138,7 +138,7 @@ export default function PapersListPage() {
                         <p className="text-xs text-muted-foreground">{paper.subject?.code} - {paper.subject?.name}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{paper.type.replace('_', ' ')}</Badge>
+                        <Badge variant="outline">{(paper.type || 'SEMESTER_EXAM').replace(/_/g, ' ')}</Badge>
                       </TableCell>
                       <TableCell className="font-mono font-bold">{paper.totalMarks} Marks</TableCell>
                       <TableCell className="text-sm">
