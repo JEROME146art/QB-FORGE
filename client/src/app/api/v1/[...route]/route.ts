@@ -491,6 +491,28 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     });
   }
 
+  // ── Create Custom Subject ──
+  if (path === 'subjects') {
+    const newSubject = {
+      id: `sub-${Date.now()}`,
+      code: body.code || 'CUSTOM101',
+      name: body.name || 'Custom Subject',
+      semester: Number(body.semester) || 1,
+      departmentId: body.departmentId || 'dept-1',
+      department: { name: body.departmentName || 'Engineering & Technology' },
+      units: body.units || [
+        { id: `u-${Date.now()}-1`, name: 'Unit 1: Fundamentals', order: 1 },
+        { id: `u-${Date.now()}-2`, name: 'Unit 2: Advanced Topics', order: 2 },
+      ],
+      courseOutcomes: body.courseOutcomes || [
+        { id: `co-${Date.now()}-1`, code: 'CO1', description: 'Understand core domain concepts' },
+        { id: `co-${Date.now()}-2`, code: 'CO2', description: 'Apply principles to engineering problems' },
+      ],
+    };
+    SUBJECTS.push(newSubject);
+    return NextResponse.json({ success: true, data: newSubject });
+  }
+
   // ── Create Question ──
   if (path === 'questions') {
     const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
@@ -603,7 +625,28 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
 
   // ── Generate Paper / Create Custom Paper ──
   if (path === 'papers/generate' || path === 'papers') {
-    const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
+    const subjectCode = body.customSubjectCode || body.subject?.code || body.subjectCode;
+    const subjectName = body.customSubjectName || body.subject?.name || body.subjectName;
+
+    let sub = SUBJECTS.find(s => s.id === body.subjectId || (subjectCode && s.code.toLowerCase() === subjectCode.toLowerCase()));
+    if (!sub && subjectCode) {
+      sub = {
+        id: `sub-${Date.now()}`,
+        code: subjectCode,
+        name: subjectName || subjectCode,
+        semester: 1,
+        departmentId: 'dept-1',
+        department: { name: body.departmentName || 'Engineering & Technology' },
+        units: [{ id: `u-${Date.now()}`, name: 'Unit 1: Core Fundamentals', order: 1 }],
+        courseOutcomes: [{ id: `co-${Date.now()}`, code: 'CO1', description: 'Master core concepts' }],
+      };
+      SUBJECTS.push(sub);
+    } else if (sub && subjectName) {
+      sub = { ...sub, code: subjectCode || sub.code, name: subjectName || sub.name };
+    } else if (!sub) {
+      sub = SUBJECTS[0];
+    }
+
     const bp = BLUEPRINTS.find(b => b.id === body.blueprintId) || BLUEPRINTS[0];
 
     // Check if custom questions were provided to also save in repository

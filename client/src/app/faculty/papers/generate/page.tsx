@@ -13,7 +13,7 @@ import {
   RefreshCw, CheckCircle, XCircle, FileText, Sparkles, Download,
   ArrowRight, Layers, BookOpen, CheckSquare, Square, Printer, Copy,
   Upload, Plus, Trash2, Edit3, Eye, FileSpreadsheet, ListPlus,
-  HelpCircle, Check, Code, SlidersHorizontal, Settings2
+  HelpCircle, Check, Code, SlidersHorizontal, Settings2, BookMarked
 } from 'lucide-react';
 
 interface Subject {
@@ -143,6 +143,14 @@ const SAMPLE_DEMO_QUESTIONS: CustomQuestion[] = [
 export default function GeneratePaperPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectId, setSubjectId] = useState('');
+  
+  // Custom Subject Support
+  const [isCustomSubject, setIsCustomSubject] = useState(false);
+  const [customSubjectCode, setCustomSubjectCode] = useState('CS201');
+  const [customSubjectName, setCustomSubjectName] = useState('Data Structures & Algorithms');
+  const [savingSubject, setSavingSubject] = useState(false);
+  const [subjectSavedMsg, setSubjectSavedMsg] = useState('');
+
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [availableQuestions, setAvailableQuestions] = useState<DBQuestion[]>([]);
@@ -157,7 +165,6 @@ export default function GeneratePaperPage() {
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [saveToPermanentBank, setSaveToPermanentBank] = useState(true);
   const [showAnswerKey, setShowAnswerKey] = useState(false);
-  const [activeEditingQ, setActiveEditingQ] = useState<CustomQuestion | null>(null);
 
   // New Question Form state
   const [newQText, setNewQText] = useState('');
@@ -200,6 +207,8 @@ export default function GeneratePaperPage() {
         
         if (subs.length > 0) {
           setSubjectId(subs[0].id);
+          setCustomSubjectCode(subs[0].code);
+          setCustomSubjectName(subs[0].name);
           setPaperTitle(`${subs[0].code} - End Semester Examination 2026`);
         }
       } catch (error) {
@@ -209,16 +218,54 @@ export default function GeneratePaperPage() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (subjectId) {
-      const selectedSub = subjects.find(s => s.id === subjectId);
-      if (selectedSub) {
-        setPaperTitle(`${selectedSub.code} - End Semester Examination 2026`);
-      }
-      const filtered = blueprints.filter((b) => b.subjectId === subjectId);
-      setBlueprint(filtered.length > 0 ? filtered[0] : (blueprints.length > 0 ? blueprints[0] : null));
+  const handleSelectExistingSubject = (selectedId: string) => {
+    if (selectedId === '__CUSTOM__') {
+      setIsCustomSubject(true);
+      return;
     }
-  }, [subjectId, blueprints, subjects]);
+    setSubjectId(selectedId);
+    const sub = subjects.find(s => s.id === selectedId);
+    if (sub) {
+      setCustomSubjectCode(sub.code);
+      setCustomSubjectName(sub.name);
+      setPaperTitle(`${sub.code} - End Semester Examination 2026`);
+    }
+    const filtered = blueprints.filter((b) => b.subjectId === selectedId);
+    setBlueprint(filtered.length > 0 ? filtered[0] : (blueprints.length > 0 ? blueprints[0] : null));
+  };
+
+  const handleCustomCodeChange = (code: string) => {
+    setCustomSubjectCode(code);
+    setPaperTitle(`${code.toUpperCase()} - End Semester Examination 2026`);
+  };
+
+  const handleSaveCustomSubjectToCatalog = async () => {
+    if (!customSubjectCode.trim() || !customSubjectName.trim()) {
+      alert('Please enter both Subject Code and Subject Name.');
+      return;
+    }
+    setSavingSubject(true);
+    try {
+      const res = await api('/subjects', {
+        method: 'POST',
+        body: JSON.stringify({
+          code: customSubjectCode.trim().toUpperCase(),
+          name: customSubjectName.trim(),
+        }),
+      });
+      const newSub = res.data?.data || res.data;
+      if (newSub && newSub.id) {
+        setSubjects((prev) => [...prev, newSub]);
+        setSubjectId(newSub.id);
+        setSubjectSavedMsg('Subject successfully saved to catalog!');
+        setTimeout(() => setSubjectSavedMsg(''), 3500);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to save custom subject');
+    } finally {
+      setSavingSubject(false);
+    }
+  };
 
   // ─── Custom Question Bank Parsing & Actions ──────────────────────────────
 
@@ -280,7 +327,6 @@ export default function GeneratePaperPage() {
 
       for (let i = startIdx; i < lines.length; i++) {
         const line = lines[i];
-        // Parse CSV line with quotes support
         const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/g;
         const matches = [];
         let match;
@@ -339,11 +385,9 @@ export default function GeneratePaperPage() {
     const parsedText: CustomQuestion[] = [];
 
     lines.forEach((line, idx) => {
-      // Remove leading numbers like "1.", "1)", "Q1:"
       const cleanLine = line.replace(/^\s*(?:Q?\d+[\.\)\:\-]\s*)/i, '');
       if (cleanLine.length < 5) return;
 
-      // Detect marks inside parentheses like [5 Marks] or (10M) or (13 marks)
       const marksMatch = cleanLine.match(/\[?\s*\(?(\d+)\s*(?:marks?|m)\s*\)?\]?/i);
       const extractedMarks = marksMatch ? Number(marksMatch[1]) : (idx % 2 === 0 ? 2 : 10);
       const questionText = cleanLine.replace(/\[?\s*\(?(\d+)\s*(?:marks?|m)\s*\)?\]?/i, '').trim();
@@ -431,6 +475,9 @@ export default function GeneratePaperPage() {
     setResult(null);
     setCreatedPaperId(null);
 
+    const activeSubjectCode = customSubjectCode.trim().toUpperCase() || 'CUSTOM101';
+    const activeSubjectName = customSubjectName.trim() || 'Custom Examination Course';
+
     try {
       if (mode === 'CUSTOM_QB') {
         if (customQuestions.length === 0) {
@@ -477,12 +524,14 @@ export default function GeneratePaperPage() {
         }
 
         const totalMarks = customQuestions.reduce((sum, q) => sum + (Number(q.marks) || 2), 0);
-        const selectedSub = subjects.find((s) => s.id === subjectId) || { code: 'CS201', name: 'Computer Science Course' };
 
         const customPaperPayload = {
-          title: paperTitle || `${selectedSub.code} Question Paper`,
+          title: paperTitle || `${activeSubjectCode} Question Paper`,
           type: 'CUSTOM_EXAM',
-          subjectId: subjectId || 'sub-1',
+          subjectId: isCustomSubject ? undefined : subjectId,
+          customSubjectCode: activeSubjectCode,
+          customSubjectName: activeSubjectName,
+          subject: { code: activeSubjectCode, name: activeSubjectName },
           totalMarks,
           duration: durationMinutes,
           institutionName,
@@ -528,12 +577,14 @@ export default function GeneratePaperPage() {
         }
 
         const totalMarks = chosen.reduce((sum, q) => sum + q.marks, 0);
-        const selectedSub = subjects.find((s) => s.id === subjectId) || { code: 'CS201', name: 'Course' };
 
         const payload = {
-          title: paperTitle || `${selectedSub?.code} Question Paper`,
+          title: paperTitle || `${activeSubjectCode} Question Paper`,
           type: 'CUSTOM_SELECTION',
-          subjectId,
+          subjectId: isCustomSubject ? undefined : subjectId,
+          customSubjectCode: activeSubjectCode,
+          customSubjectName: activeSubjectName,
+          subject: { code: activeSubjectCode, name: activeSubjectName },
           totalMarks,
           duration: durationMinutes,
           institutionName,
@@ -562,6 +613,8 @@ export default function GeneratePaperPage() {
           body: JSON.stringify({
             title: paperTitle,
             subjectId,
+            customSubjectCode: activeSubjectCode,
+            customSubjectName: activeSubjectName,
             blueprintId: blueprint.id,
             sets: selectedSets,
             institutionName,
@@ -593,6 +646,7 @@ export default function GeneratePaperPage() {
     paperText += `${result.institutionName || institutionName}\n`;
     paperText += `${result.departmentName || departmentName}\n`;
     paperText += `${result.title || paperTitle}\n`;
+    paperText += `Course: ${result.subject?.code || customSubjectCode} - ${result.subject?.name || customSubjectName}\n`;
     paperText += `Duration: ${result.duration || durationMinutes} Minutes | Max Marks: ${result.totalMarks}\n`;
     paperText += `=================================================================\n\n`;
 
@@ -644,10 +698,10 @@ export default function GeneratePaperPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">Question Paper Generator</h1>
-            <Badge variant="secondary" className="font-mono text-xs">v2.0 Custom QB</Badge>
+            <Badge variant="secondary" className="font-mono text-xs">Custom Subject &amp; QB Enabled</Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Provide your own custom question bank, pick from the repository, or solve via automated blueprint.
+            Provide your custom subject, your own question bank, or auto-generate from blueprints.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -677,7 +731,7 @@ export default function GeneratePaperPage() {
                   Source &amp; Generation Mode
                 </span>
               </CardTitle>
-              <CardDescription>Select where your exam questions should come from</CardDescription>
+              <CardDescription>Choose how you want to build this examination paper</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 3 Generation Modes */}
@@ -714,34 +768,36 @@ export default function GeneratePaperPage() {
                 </Button>
               </div>
 
-              {/* Institution & Exam Header Settings */}
+              {/* Subject Configuration: Standard vs Custom Subject Mode */}
               <div className="space-y-3 pt-2 border-t text-xs">
-                <div className="space-y-1">
-                  <label className="font-semibold text-muted-foreground">University / Institution Name</label>
-                  <Input
-                    value={institutionName}
-                    onChange={(e) => setInstitutionName(e.target.value)}
-                    placeholder="e.g. SRM Institute of Science & Technology"
-                    className="h-8 text-xs"
-                  />
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-foreground flex items-center gap-1.5">
+                    <BookMarked className="h-3.5 w-3.5 text-primary" />
+                    Subject Details
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomSubject(false)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${!isCustomSubject ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                    >
+                      From Catalog
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomSubject(true)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${isCustomSubject ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                    >
+                      + Custom Subject
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-muted-foreground">Exam Title / Name</label>
-                  <Input
-                    value={paperTitle}
-                    onChange={(e) => setPaperTitle(e.target.value)}
-                    placeholder="e.g. CS201 - End Semester Examination 2026"
-                    className="h-8 text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
+                {!isCustomSubject ? (
                   <div className="space-y-1">
-                    <label className="font-semibold text-muted-foreground">Subject</label>
-                    <Select value={subjectId} onValueChange={setSubjectId}>
+                    <Select value={subjectId} onValueChange={handleSelectExistingSubject}>
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select subject" />
+                        <SelectValue placeholder="Select existing subject" />
                       </SelectTrigger>
                       <SelectContent>
                         {subjects.map((s) => (
@@ -749,17 +805,83 @@ export default function GeneratePaperPage() {
                             {s.code} - {s.name}
                           </SelectItem>
                         ))}
+                        <SelectItem value="__CUSTOM__" className="text-xs font-semibold text-primary">
+                          + Enter Custom Subject Code &amp; Name...
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                ) : (
+                  <div className="space-y-2 p-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-muted-foreground">Subject Code</label>
+                        <Input
+                          value={customSubjectCode}
+                          onChange={(e) => handleCustomCodeChange(e.target.value)}
+                          placeholder="e.g. AI301, PHY101"
+                          className="h-7 text-xs font-mono uppercase"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-[10px] font-semibold text-muted-foreground">Subject Name</label>
+                        <Input
+                          value={customSubjectName}
+                          onChange={(e) => setCustomSubjectName(e.target.value)}
+                          placeholder="e.g. Artificial Intelligence & Neural Networks"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-muted-foreground">
+                        {subjectSavedMsg ? <span className="text-green-600 font-semibold">{subjectSavedMsg}</span> : 'Custom subject will be typeset on the paper.'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveCustomSubjectToCatalog}
+                        disabled={savingSubject || !customSubjectCode.trim()}
+                        className="h-6 text-[10px] px-2"
+                      >
+                        {savingSubject ? 'Saving...' : 'Save to Catalog'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Exam Title & Institutional Information */}
+                <div className="space-y-2 pt-1">
                   <div className="space-y-1">
-                    <label className="font-semibold text-muted-foreground">Duration (Mins)</label>
+                    <label className="font-semibold text-muted-foreground">Paper Title</label>
                     <Input
-                      type="number"
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      value={paperTitle}
+                      onChange={(e) => setPaperTitle(e.target.value)}
+                      placeholder="e.g. AI301 - End Semester Examination 2026"
                       className="h-8 text-xs"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-muted-foreground">Institution Name</label>
+                      <Input
+                        value={institutionName}
+                        onChange={(e) => setInstitutionName(e.target.value)}
+                        placeholder="e.g. SRM University"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-muted-foreground">Duration (Mins)</label>
+                      <Input
+                        type="number"
+                        value={durationMinutes}
+                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -838,7 +960,7 @@ export default function GeneratePaperPage() {
                     <div className="p-3 bg-muted/70 rounded-lg space-y-2 border text-xs">
                       <label className="font-semibold text-foreground flex items-center justify-between">
                         <span>Paste Questions (CSV, JSON array, or Numbered text):</span>
-                        <span className="text-[10px] text-muted-foreground">e.g. 1. What is OOP? (5 Marks)</span>
+                        <span className="text-[10px] text-muted-foreground">e.g. 1. What is Backpropagation? (5 Marks)</span>
                       </label>
                       <textarea
                         value={pasteText}
@@ -870,7 +992,7 @@ export default function GeneratePaperPage() {
                     </div>
                   )}
 
-                  {/* Quick Add Single Question Accordion */}
+                  {/* Quick Add Single Question Form */}
                   <div className="border rounded-lg p-3 bg-card space-y-3 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold flex items-center gap-1.5 text-foreground">
@@ -883,7 +1005,7 @@ export default function GeneratePaperPage() {
                       <Input
                         value={newQText}
                         onChange={(e) => setNewQText(e.target.value)}
-                        placeholder="Type question text (LaTeX math supported: $O(N \log N)$, $\int x dx$)..."
+                        placeholder="Type question statement (LaTeX math supported: $E=mc^2$, $O(N \log N)$)..."
                         className="h-8 text-xs"
                       />
 
@@ -1187,7 +1309,7 @@ export default function GeneratePaperPage() {
                 {loading
                   ? 'Compiling & Typesetting Exam Paper...'
                   : mode === 'CUSTOM_QB'
-                  ? `Generate Paper from My ${customQuestions.length} Questions`
+                  ? `Generate ${customSubjectCode} Paper from My ${customQuestions.length} Questions`
                   : mode === 'MANUAL'
                   ? `Generate Paper from ${selectedQuestionIds.length} Stored Questions`
                   : 'Auto-Generate Balanced Paper'}
@@ -1260,7 +1382,7 @@ export default function GeneratePaperPage() {
                       {result.title || paperTitle}
                     </h3>
                     <div className="flex justify-between items-center text-xs font-medium pt-3 border-t text-muted-foreground print:text-black">
-                      <span><strong>Course:</strong> {result.subject?.code} - {result.subject?.name}</span>
+                      <span><strong>Course:</strong> {result.subject?.code || customSubjectCode} - {result.subject?.name || customSubjectName}</span>
                       <span><strong>Max Marks:</strong> {result.totalMarks}</span>
                       <span><strong>Duration:</strong> {result.duration} Mins</span>
                     </div>
@@ -1386,7 +1508,7 @@ export default function GeneratePaperPage() {
                   <FileText className="h-12 w-12 mx-auto stroke-1" />
                   <p className="font-semibold text-base text-foreground">Ready to Build Examination Paper</p>
                   <p className="text-xs max-w-sm mx-auto">
-                    Provide your questions in <strong>My Custom QB</strong> on the left, paste a custom list, or select from stored bank.
+                    Provide your custom subject and questions on the left, or select from stored bank.
                   </p>
                 </div>
               )}
