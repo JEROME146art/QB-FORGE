@@ -628,8 +628,8 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     const subjectCode = body.customSubjectCode || body.subject?.code || body.subjectCode;
     const subjectName = body.customSubjectName || body.subject?.name || body.subjectName;
 
-    let sub = SUBJECTS.find(s => s.id === body.subjectId || (subjectCode && s.code.toLowerCase() === subjectCode.toLowerCase()));
-    if (!sub && subjectCode) {
+    let sub;
+    if (subjectCode) {
       sub = {
         id: `sub-${Date.now()}`,
         code: subjectCode,
@@ -640,11 +640,11 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
         units: [{ id: `u-${Date.now()}`, name: 'Unit 1: Core Fundamentals', order: 1 }],
         courseOutcomes: [{ id: `co-${Date.now()}`, code: 'CO1', description: 'Master core concepts' }],
       };
-      SUBJECTS.push(sub);
-    } else if (sub && subjectName) {
-      sub = { ...sub, code: subjectCode || sub.code, name: subjectName || sub.name };
-    } else if (!sub) {
-      sub = SUBJECTS[0];
+      if (!SUBJECTS.some(s => s.code.toLowerCase() === subjectCode.toLowerCase())) {
+        SUBJECTS.push(sub);
+      }
+    } else {
+      sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
     }
 
     const bp = BLUEPRINTS.find(b => b.id === body.blueprintId) || BLUEPRINTS[0];
