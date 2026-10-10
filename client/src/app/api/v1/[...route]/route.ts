@@ -601,48 +601,84 @@ export async function POST(req: NextRequest, { params }: { params: { route: stri
     return NextResponse.json({ success: true, data: { questions: generated } });
   }
 
-  // ── Generate Paper ──
+  // ── Generate Paper / Create Custom Paper ──
   if (path === 'papers/generate' || path === 'papers') {
     const sub = SUBJECTS.find(s => s.id === body.subjectId) || SUBJECTS[0];
     const bp = BLUEPRINTS.find(b => b.id === body.blueprintId) || BLUEPRINTS[0];
 
-    // Intelligently assemble questions matching the blueprint sections
-    const generatedSections = (bp.sections || [
-      { name: 'Part A - Objective Questions', numQuestions: 5, marksPerQuestion: 2 },
-      { name: 'Part B - Core Problems', numQuestions: 3, marksPerQuestion: 13 },
-    ]).map((sec: any, idx: number) => {
-      let matching = QUESTIONS.filter(q => q.subjectId === sub.id || true);
-      if (sec.questionType) {
-        const typeMatch = matching.filter(q => q.type === sec.questionType);
-        if (typeMatch.length > 0) matching = typeMatch;
+    // Check if custom questions were provided to also save in repository
+    if (body.saveToBank && Array.isArray(body.customQuestions) && body.customQuestions.length > 0) {
+      for (const item of body.customQuestions) {
+        const qObj = {
+          id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          subjectId: sub.id,
+          unitId: sub.units[0]?.id || 'u-1',
+          subject: { code: sub.code, name: sub.name },
+          unit: { name: 'General' },
+          text: item.text || item.question,
+          type: item.type || 'SHORT_ANSWER',
+          marks: Number(item.marks) || 5,
+          difficulty: item.difficulty || 'MEDIUM',
+          bloomLevel: item.bloomLevel || 'UNDERSTAND',
+          options: item.options || [],
+          modelAnswer: item.modelAnswer || 'Standard model answer & marking key.',
+          usageCount: 1,
+          createdAt: new Date().toISOString(),
+        };
+        QUESTIONS.unshift(qObj);
       }
-      
-      const count = Math.min(sec.numQuestions || 3, matching.length);
-      const selected = matching.slice(0, count).map(q => ({
-        ...q,
-        marks: sec.marksPerQuestion || q.marks,
-      }));
+    }
 
-      return {
+    // If custom sections were passed directly, use them!
+    let generatedSections = [];
+    if (Array.isArray(body.sections) && body.sections.length > 0) {
+      generatedSections = body.sections.map((sec: any, idx: number) => ({
         name: sec.name || `Section ${idx + 1}`,
-        totalMarks: selected.reduce((sum, q) => sum + (q.marks || 2), 0) || (sec.numQuestions * sec.marksPerQuestion),
-        questions: selected.length > 0 ? selected : QUESTIONS.slice(0, 3),
-      };
-    });
+        totalMarks: sec.totalMarks || (sec.questions || []).reduce((sum: number, q: any) => sum + (Number(q.marks) || 2), 0),
+        questions: sec.questions || [],
+      }));
+    } else {
+      // Intelligently assemble questions matching the blueprint sections
+      generatedSections = (bp.sections || [
+        { name: 'Part A - Objective Questions', numQuestions: 5, marksPerQuestion: 2 },
+        { name: 'Part B - Core Problems', numQuestions: 3, marksPerQuestion: 13 },
+      ]).map((sec: any, idx: number) => {
+        let matching = QUESTIONS.filter(q => q.subjectId === sub.id || true);
+        if (sec.questionType) {
+          const typeMatch = matching.filter(q => q.type === sec.questionType);
+          if (typeMatch.length > 0) matching = typeMatch;
+        }
+        
+        const count = Math.min(sec.numQuestions || 3, matching.length);
+        const selected = matching.slice(0, count).map(q => ({
+          ...q,
+          marks: sec.marksPerQuestion || q.marks,
+        }));
 
-    const calculatedTotal = generatedSections.reduce((sum, s) => sum + s.totalMarks, 0);
+        return {
+          name: sec.name || `Section ${idx + 1}`,
+          totalMarks: selected.reduce((sum, q) => sum + (q.marks || 2), 0) || (sec.numQuestions * sec.marksPerQuestion),
+          questions: selected.length > 0 ? selected : QUESTIONS.slice(0, 3),
+        };
+      });
+    }
+
+    const calculatedTotal = generatedSections.reduce((sum: number, s: any) => sum + (s.totalMarks || 0), 0);
 
     const newPaper = {
       id: `paper-${Date.now()}`,
-      title: body.title || `${sub.code} - ${bp.name}`,
-      type: body.type || bp?.type || 'SEMESTER_EXAM',
+      title: body.title || `${sub.code} - Question Paper`,
+      type: body.type || bp?.type || 'CUSTOM',
       subject: { code: sub.code, name: sub.name },
-      blueprint: { name: bp?.name || 'Standard Blueprint' },
-      totalMarks: bp.totalMarks || calculatedTotal || 100,
-      duration: bp.duration || 180,
+      blueprint: { name: bp?.name || 'Custom Question Bank Assembly' },
+      totalMarks: body.totalMarks || calculatedTotal || bp?.totalMarks || 100,
+      duration: body.duration || bp?.duration || 180,
       status: 'FINALIZED',
-      setsCount: body.sets?.length || 2,
+      setsCount: body.sets?.length || body.setsCount || 2,
       sections: generatedSections,
+      institutionName: body.institutionName || 'SRM Institute of Science & Technology',
+      departmentName: body.departmentName || 'Department of Computer Science & Engineering',
+      instructions: body.instructions || 'Answer all questions according to Section specifications.',
       createdAt: new Date().toISOString(),
     };
 
